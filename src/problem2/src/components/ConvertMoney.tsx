@@ -3,7 +3,6 @@ import {
   Button,
   CircularProgress,
   FormControl,
-  FormHelperText,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -84,7 +83,6 @@ export const ConvertMoney = () => {
   }
 
   function validateForm() {
-    debugger;
     const errors = {} as Errors;
     switch (true) {
       /* FALLTHROUGH */
@@ -102,7 +100,16 @@ export const ConvertMoney = () => {
 
   const showSummary = isNumber(convertedAmount);
 
-  const moreInformation = (
+  const selectItems = Object.keys(prices).map((currency) => (
+    <MenuItem key={currency} value={currency}>
+      <Stack direction="row" alignItems="center">
+        <img src={prices[currency]?.img} alt="" height="20" width="20" />
+        <Typography ml={1}>{currency}</Typography>
+      </Stack>
+    </MenuItem>
+  ));
+
+  const tooltipInformation = (
     <Stack gap={1} p={2}>
       <div>
         {fromCurrency} price updated at
@@ -137,16 +144,14 @@ export const ConvertMoney = () => {
         {!isLoading && (
           <>
             <Stack
-              spacing={{ xs: 2, sm: 4, md: 4 }}
+              direction={{ sm: "column", md: "row" }}
+              spacing={{ xs: 1, sm: 2, md: 4 }}
               alignItems="center"
               justifyContent="center"
               mb={4}
-              direction="row"
-              useFlexGap
-              flexWrap="wrap"
             >
               <Box>
-                <FormControl variant="outlined" sx={{ minWidth: 180 }}>
+                <FormControl variant="outlined" sx={{ minWidth: 220 }}>
                   <InputLabel>Amount</InputLabel>
                   <OutlinedInput
                     error={errors.amount}
@@ -180,26 +185,16 @@ export const ConvertMoney = () => {
                     label="From"
                     error={errors.fromCurrency}
                   >
-                    {Object.keys(prices).map((currency) => (
-                      <MenuItem key={currency} value={currency}>
-                        <Stack direction="row" alignItems="center">
-                          <img
-                            src={prices[currency]?.img}
-                            alt=""
-                            height="20"
-                            width="20"
-                          />
-                          <Typography ml={1}>{currency}</Typography>
-                        </Stack>
-                      </MenuItem>
-                    ))}
+                    {selectItems}
                   </Select>
                 </FormControl>
               </Box>
               <Box>
-                <IconButton onClick={swapCurrencies} size="large">
-                  <SwapHorizIcon />
-                </IconButton>
+                <FormControl sx={{ minWidth: 40 }}>
+                  <IconButton onClick={swapCurrencies}>
+                    <SwapHorizIcon />
+                  </IconButton>
+                </FormControl>
               </Box>
               <Box>
                 <FormControl sx={{ minWidth: 220 }}>
@@ -212,47 +207,44 @@ export const ConvertMoney = () => {
                     label="To"
                     error={errors.toCurrency}
                   >
-                    {Object.keys(prices).map((currency) => (
-                      <MenuItem key={currency} value={currency}>
-                        <Stack direction="row" alignItems="center">
-                          <img
-                            src={prices[currency]?.img}
-                            alt=""
-                            height="20"
-                            width="20"
-                          />
-                          <Typography ml={1}>{currency}</Typography>
-                        </Stack>
-                      </MenuItem>
-                    ))}
+                    {selectItems}
                   </Select>
                 </FormControl>
               </Box>
             </Stack>
             <Stack
-              spacing={{ xs: 1, sm: 2 }}
-              alignContent="center"
+              direction={{ sm: "column", md: "row" }}
+              spacing={{ xs: 1, sm: 2, md: 4 }}
               alignItems="center"
-              justifyContent="center"
-              direction="row"
+              justifyContent="flex-end"
             >
               <Box
-                width="400px"
+                minWidth={340}
                 style={{
                   visibility: showSummary ? "visible" : "hidden",
                 }}
               >
                 <Typography>{`${amount} ${fromCurrency} =`}</Typography>
-                <Stack direction={"row"} gap={1} alignItems={"center"}>
-                  <Typography variant="h5">
+                <Stack
+                  direction={{ sm: "column", md: "row" }}
+                  alignItems="center"
+                >
+                  <Typography variant="h5" display="block">
                     {`${convertedAmount} ${toCurrency}`}
                   </Typography>
-                  <Tooltip title={moreInformation}>
+
+                  <Tooltip title={tooltipInformation}>
                     <InfoIcon
                       style={{ marginLeft: "0.5rem", cursor: "pointer" }}
                     />
                   </Tooltip>
                 </Stack>
+                <Typography variant="overline" display="block">
+                  1 {fromCurrency} = {`${prices[fromCurrency]?.price} USD`}
+                </Typography>
+                <Typography variant="overline" display="block">
+                  1 {toCurrency} = {`${prices[toCurrency]?.price} USD`}
+                </Typography>
               </Box>
               <Box>
                 <Button
