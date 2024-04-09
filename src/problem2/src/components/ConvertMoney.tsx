@@ -1,7 +1,9 @@
 import {
   Box,
   Button,
+  CircularProgress,
   FormControl,
+  FormHelperText,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -12,8 +14,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import React, { EventHandler, useEffect, useState } from "react";
-import round from "lodash/round";
+import React, { useEffect, useState } from "react";
 import isNumber from "lodash/isNumber";
 import { getPrices } from "../apis/prices.api";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
@@ -21,24 +22,37 @@ import InfoIcon from "@mui/icons-material/Info";
 import { getHumanReadableDate } from "../utils/helper";
 import { PriceData } from "../types/prices.types";
 
+type Errors = {
+  amount?: boolean;
+  fromCurrency?: boolean;
+  toCurrency?: boolean;
+};
+
 export const ConvertMoney = () => {
-  const [prices, setPrices] = useState([] as PriceData[]);
+  const [prices, setPrices] = useState<PriceData>({});
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [errors, setErrors] = useState<Errors>({});
 
   useEffect(() => {
-    getPrices().then((res) => setPrices(res));
+    setIsLoading(true);
+    getPrices()
+      .then((res) => setPrices(res))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const [amount, setAmount] = useState("");
-  const [fromCurrency, setFromCurrency] = useState({} as PriceData);
-  const [toCurrency, setToCurrency] = useState({} as PriceData);
-  const [convertedAmount, setConvertedAmount] = useState(null as null | number);
+  const [fromCurrency, setFromCurrency] = useState<keyof PriceData>("");
+  const [toCurrency, setToCurrency] = useState<keyof PriceData>("");
+  const [convertedAmount, setConvertedAmount] = useState<null | number>(null);
 
   function convertCurrency() {
-    if (!amount || !fromCurrency || !toCurrency) {
+    if (validateForm()) {
       return;
     }
-    const priceInUsd = Number(amount) * Number(fromCurrency.price);
-    const amountAfterConversion = priceInUsd / Number(toCurrency.price);
+    const priceInUsd = Number(amount) * Number(prices[fromCurrency].price);
+    const amountAfterConversion = priceInUsd / Number(prices[toCurrency].price);
     setConvertedAmount(amountAfterConversion);
   }
 
@@ -69,135 +83,190 @@ export const ConvertMoney = () => {
     resetConvertedAmount();
   }
 
+  function validateForm() {
+    debugger;
+    const errors = {} as Errors;
+    switch (true) {
+      /* FALLTHROUGH */
+      case amount === "":
+        errors.amount = !amount;
+      case !fromCurrency:
+        errors.fromCurrency = !fromCurrency;
+      case !toCurrency:
+        errors.toCurrency = !toCurrency;
+    }
+
+    setErrors(errors);
+    return !!Object.keys(errors).length;
+  }
+
   const showSummary = isNumber(convertedAmount);
+
   const moreInformation = (
     <Stack gap={1} p={2}>
       <div>
-        {fromCurrency.currency} price updated at:{" "}
-        {getHumanReadableDate(fromCurrency.date)}
+        {fromCurrency} price updated at
+        <Typography variant="overline" display="block">
+          {getHumanReadableDate(prices[fromCurrency]?.date)}
+        </Typography>
       </div>
       <div>
-        {toCurrency.currency} price updated at:{" "}
-        {getHumanReadableDate(toCurrency.date)}
+        {toCurrency} price updated at
+        <Typography variant="overline" display="block">
+          {getHumanReadableDate(prices[toCurrency]?.date)}
+        </Typography>
       </div>
-      <div>The converted amount is round off to 4 digits.</div>
     </Stack>
   );
 
   return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      mt={12}
-      ml={12}
-      mr={12}
-      p={14}
-      bgcolor="#f4f4f4"
-      borderRadius={10}
-      boxShadow={3}
-    >
-      <Stack
-        spacing={{ xs: 2, sm: 4 }}
-        direction="row"
+    <>
+      <Box
+        display="flex"
+        flexDirection="column"
         alignItems="center"
-        justifyContent="center"
-        mb={4}
+        mt={12}
+        ml={12}
+        mr={12}
+        p={14}
+        bgcolor="#f4f4f4"
+        borderRadius={10}
+        boxShadow={3}
       >
-        <Box>
-          <FormControl variant="outlined" sx={{ minWidth: 180 }}>
-            <InputLabel>Amount</InputLabel>
-            <OutlinedInput
-              id="amount"
-              type="number"
-              value={amount}
-              onChange={handleSetAmount}
-              endAdornment={
-                <InputAdornment position="start">
-                  {fromCurrency.img && (
-                    <img src={fromCurrency.img} alt="" height="20" width="20" />
-                  )}
-                </InputAdornment>
-              }
-              label="Amount"
-            />
-          </FormControl>
-        </Box>
-        <Box>
-          <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel id="from-label">From</InputLabel>
-            <Select
-              id="from"
-              value={fromCurrency}
-              onChange={handeFromCurrencyChange}
-              label="From"
+        {isLoading && <CircularProgress />}
+        {!isLoading && (
+          <>
+            <Stack
+              spacing={{ xs: 2, sm: 4, md: 4 }}
+              alignItems="center"
+              justifyContent="center"
+              mb={4}
+              direction="row"
+              useFlexGap
+              flexWrap="wrap"
             >
-              {prices.map((info) => (
-                <MenuItem key={info.currency} value={info}>
-                  <Stack direction="row" alignItems="center">
-                    <img src={info.img} alt="" height="20" width="20" />
-                    <Typography ml={1}>{info.currency}</Typography>
-                  </Stack>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-        <Box>
-          <IconButton onClick={swapCurrencies} size="large">
-            <SwapHorizIcon />
-          </IconButton>
-        </Box>
-        <Box>
-          <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel id="to-label">To</InputLabel>
-            <Select
-              labelId="to-label"
-              id="to"
-              value={toCurrency}
-              onChange={handeToCurrencyChange}
-              label="To"
-            >
-              {prices.map((info) => (
-                <MenuItem key={info.currency} value={info}>
-                  <Stack direction="row" alignItems="center">
-                    <img src={info.img} alt="" height="20" width="20" />
-                    <Typography ml={1}>{info.currency}</Typography>
-                  </Stack>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      </Stack>
-      <Stack
-        spacing={{ xs: 2, sm: 4 }}
-        direction="row"
-        alignItems="center"
-        justifyContent="space-around"
-        width="100%"
-      >
-        {showSummary ? (
-          <Box>
-            <Typography>{`${amount} ${fromCurrency.currency} =`}</Typography>
-
-            <Stack direction={"row"} gap={1} alignItems={"center"}>
-              <Typography variant="h5">
-                {`${round(convertedAmount, 4)} ${toCurrency.currency}`}
-              </Typography>
-              <Tooltip title={moreInformation}>
-                <InfoIcon style={{ marginLeft: "0.5rem", cursor: "pointer" }} />
-              </Tooltip>
+              <Box>
+                <FormControl variant="outlined" sx={{ minWidth: 180 }}>
+                  <InputLabel>Amount</InputLabel>
+                  <OutlinedInput
+                    error={errors.amount}
+                    id="amount"
+                    type="number"
+                    value={amount}
+                    onChange={handleSetAmount}
+                    endAdornment={
+                      <InputAdornment position="start">
+                        {prices[fromCurrency]?.img && (
+                          <img
+                            src={prices[fromCurrency].img}
+                            alt=""
+                            height="20"
+                            width="20"
+                          />
+                        )}
+                      </InputAdornment>
+                    }
+                    label="Amount"
+                  />
+                </FormControl>
+              </Box>
+              <Box>
+                <FormControl sx={{ minWidth: 220 }}>
+                  <InputLabel id="from-label">From</InputLabel>
+                  <Select
+                    id="from"
+                    value={fromCurrency}
+                    onChange={handeFromCurrencyChange}
+                    label="From"
+                    error={errors.fromCurrency}
+                  >
+                    {Object.keys(prices).map((currency) => (
+                      <MenuItem key={currency} value={currency}>
+                        <Stack direction="row" alignItems="center">
+                          <img
+                            src={prices[currency]?.img}
+                            alt=""
+                            height="20"
+                            width="20"
+                          />
+                          <Typography ml={1}>{currency}</Typography>
+                        </Stack>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box>
+                <IconButton onClick={swapCurrencies} size="large">
+                  <SwapHorizIcon />
+                </IconButton>
+              </Box>
+              <Box>
+                <FormControl sx={{ minWidth: 220 }}>
+                  <InputLabel id="to-label">To</InputLabel>
+                  <Select
+                    labelId="to-label"
+                    id="to"
+                    value={toCurrency}
+                    onChange={handeToCurrencyChange}
+                    label="To"
+                    error={errors.toCurrency}
+                  >
+                    {Object.keys(prices).map((currency) => (
+                      <MenuItem key={currency} value={currency}>
+                        <Stack direction="row" alignItems="center">
+                          <img
+                            src={prices[currency]?.img}
+                            alt=""
+                            height="20"
+                            width="20"
+                          />
+                          <Typography ml={1}>{currency}</Typography>
+                        </Stack>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
             </Stack>
-          </Box>
-        ) : (
-          <Box></Box>
+            <Stack
+              spacing={{ xs: 1, sm: 2 }}
+              alignContent="center"
+              alignItems="center"
+              justifyContent="center"
+              direction="row"
+            >
+              <Box
+                width="400px"
+                style={{
+                  visibility: showSummary ? "visible" : "hidden",
+                }}
+              >
+                <Typography>{`${amount} ${fromCurrency} =`}</Typography>
+                <Stack direction={"row"} gap={1} alignItems={"center"}>
+                  <Typography variant="h5">
+                    {`${convertedAmount} ${toCurrency}`}
+                  </Typography>
+                  <Tooltip title={moreInformation}>
+                    <InfoIcon
+                      style={{ marginLeft: "0.5rem", cursor: "pointer" }}
+                    />
+                  </Tooltip>
+                </Stack>
+              </Box>
+              <Box>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={convertCurrency}
+                >
+                  Convert currency
+                </Button>
+              </Box>
+            </Stack>
+          </>
         )}
-
-        <Button variant="contained" onClick={convertCurrency}>
-          Convert
-        </Button>
-      </Stack>
-    </Box>
+      </Box>
+    </>
   );
 };

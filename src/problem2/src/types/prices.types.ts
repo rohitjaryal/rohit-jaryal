@@ -4,4 +4,6 @@ export interface PricesResponse {
   price: number;
 }
 
-export type PriceData = PricesResponse & { img: string };
+export interface PriceData {
+  [key: string]: PricesResponse & { img: string };
+}

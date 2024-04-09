@@ -3,13 +3,7 @@ import "./App.css";
 import { ConvertMoney } from "./components/ConvertMoney";
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <ConvertMoney />
-      </header>
-    </div>
-  );
+  return <ConvertMoney />;
 }
 
 export default App;
